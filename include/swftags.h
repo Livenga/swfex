@@ -1,3 +1,4 @@
+/* SWF Chunk Tags */
 #define END                          (0)
 #define SHOWFRAME                    (1)
 #define DEFINESHAPE                  (2)

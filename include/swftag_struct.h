@@ -1,3 +1,4 @@
+/* Bitmap LossLess2 ヘッダ */
 typedef struct swf_definebitslossless2 {
   int swf_tag_type;
   int swf_character_id;
@@ -12,6 +13,7 @@ typedef struct swf_definebitslossless2 {
   unsigned char *swf_bitmap_data;
 } swf_lossless2;
 
+/* DefineSound ヘッダ */
 typedef struct swf_definesound {
   int swf_tag_type;
   int swf_character_id; // unsigned int 16
