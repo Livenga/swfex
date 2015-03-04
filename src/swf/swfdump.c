@@ -10,7 +10,6 @@
 
 extern int remove_temporary(const char *path);
 extern int inflate_zlib(int fd, const char *output_path);
-extern void load_jpeg3(int fd, unsigned int extend);
 extern int swf_definebitsjpeg(int fd, const int tag_size);
 extern int swf_definebitsjpeg3(int fd, const int tag_size);
 extern int swf_definebitslossless2(int fd, const int tag_number, const int tag_size);
