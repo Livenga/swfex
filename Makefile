@@ -8,7 +8,7 @@ SOURCE = main.c\
 				 graphics/convert_png.c\
 				 graphics/swfbitmap.c\
 				 sound/swfsound.c\
-				 util.c
+				 util/util.c
 
 OBJC = main.o swfdump.o inflate.o util.o swftag.o swfjpg.o convert_png.o\
 			 swfbitmap.o swfsound.o
