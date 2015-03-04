@@ -1,0 +1,139 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include "../../include/swfheader.h"
+#include "../../include/swftags.h"
+
+char *swf_tag_function(const int number) {
+  switch(number) {
+    case END:
+      return "End";
+    case SHOWFRAME:
+      return "ShowFrame";
+    case DEFINESHAPE:
+      return "DefineShape";
+    case PLACEOBJECT:
+      return "PlaceObject";
+    case REMOVEOBJECT:
+      return "RemoveObject";
+    case DEFINEBITS:
+      return "DefineBits";
+    case DEFINEBUTTON:
+      return "DefineButton";
+    case JPEGTABLES:
+      return "JPEGTables";
+    case SETBACKGROUNDCOLOR:
+      return "SetBackgroundColor";
+    case DEFINEFONT:
+      return "DefineFont";
+    case DEFINETEXT:
+      return "DefineText";
+    case DOACTION:
+      return "DoAction";
+    case DEFINEFONTINFO:
+      return "DefineFontInfo";
+    case DEFINESOUND:
+      return "DefineSound";
+    case STARTSOUND:
+      return "StartSound";
+    case DEFINEBUTTONSOUND:
+      return "DefineButtonSound";
+    case SOUNDSTREAMHEAD:
+      return "SoundStreamHead";
+    case SOUNDSTREAMBLOCK:
+      return "SoundStreamBlock";
+    case DEFINEBITSLOSSLESS:
+      return "DefineBitsLossless";
+    case DEFINEBITSJPEG2:
+      return "DefineBitsJPEG2";
+    case DEFINESHAPE2:
+      return "DefineShape2";
+    case DEFINEBUTTONCXFORM:
+      return "DefineButtonCxform";
+    case PROTECT:
+      return "Protect";
+    case PLACEOBJECT2:
+      return "PlaceObject2";
+    case REMOVEOBJECT2:
+      return "RemoveObject2";
+    case DEFINESHAPE3:
+      return "DefineShape3";
+    case DEFINETEXT2:
+      return "DefineText2";
+    case DEFINEBUTTON2:
+      return "DefineButton2";
+    case DEFINEBITSJPEG3:
+      return "DefineBitsJPEG3";
+    case DEFINEBITSLOSSLESS2:
+      return "DefineBitsLossless2";
+    case DEFINEEDITTEXT:
+      return "DefineEditText";
+    case DEFINESPRITE:
+      return "DefineSprite";
+    case FRAMELABEL:
+      return "FrameLabel";
+    case SOUNDSTREAMHEAD2:
+      return "SoundStreamHead2";
+    case DEFINEMORPHSHAPE:
+      return "DefineMorphShape";
+    case DEFINEFONT2:
+      return "DefineFont2";
+    case EXPORTASSETS:
+      return "ExportAssets";
+    case IMPORTASSETS:
+      return "ImportAssets";
+    case ENABLEDEBUGGER:
+      return "EnableDebugger";
+    case DOINITACTION:
+      return "DoInitAction";
+    case DEFINEVIDEOSTREAM:
+      return "DefineVideoStream";
+    case VIDEOFRAME:
+      return "VideoFrame";
+    case DEFINEFONTINFO2:
+      return "DefineFontInfo2";
+    case ENABLEDEBUGGER2:
+      return "EnableDebugger2";
+    case SCRIPTLIMITS:
+      return "ScriptLimits";
+    case SETTABINDEX:
+      return "SetTabIndex";
+    case FILEATTRIBUTES:
+      return "FileAttributes";
+    case PLACEOBJECT3:
+      return "PlaceObject3";
+    case IMPORTASSETS2:
+      return "ImportAssets2";
+    case DEFINEFONTALIGNZONES:
+      return "DefineFontAlignZones";
+    case CSMTEXTSETTINGS:
+      return "CSMTextSettings";
+    case DEFINEFONT3:
+      return "DefineFont3";
+    case SYMBOLCLASS:
+      return "SymbolClass";
+    case METADATA:
+      return "Metadata";
+    case DEFINESCALINGGRID:
+      return "DefineScalingGrid";
+    case DOABC:
+      return "DoABC";
+    case DEFINESHAPE4:
+      return "DefineShape4";
+    case DEFINEMORPHSHAPE2:
+      return "DefineMorphShape2";
+    case DEFINESCENEANDFRAMELABELDATA:
+      return "DefineSceneAndFrameLabelData";
+    case DEFINEBINARYDATA:
+      return "DefineBinaryData";
+    case DEFINEFONTNAME:
+      return "DefineFontName";
+    case STARTSOUND2:
+      return "StartSound2";
+  }
+  return "null";
+}
