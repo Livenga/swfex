@@ -7,16 +7,9 @@
 #include <fcntl.h>
 #include "../../include/swfheader.h"
 #include "../../include/swftags.h"
+#include "../../include/swfex.h"
+#include "../../include/swfutil.h"
 
-extern int remove_temporary(const char *path);
-extern int inflate_zlib(int fd, const char *output_path);
-extern int swf_definebitsjpeg(int fd, const int tag_size);
-extern int swf_definebitsjpeg3(int fd, const int tag_size);
-extern int swf_definebitslossless2(int fd, const int tag_number, const int tag_size);
-extern int swf_definesound(int fd, const int tag_number, const int tag_size);
-
-/* src/swf/swftag.c */
-extern char *swf_tag_function(const int number);
 
 int swf_get_header(int fd, swf_header *head) {
   unsigned char tsize[4];
