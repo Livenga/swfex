@@ -82,6 +82,8 @@ int swf_definebitsjpeg3(int fd, const int tag_size) {
     write(alpha_fd, load_space, alpha_size);
     close(alpha_fd);
     free(load_space);
+
+    /* 画像変換 */
     convert_png(image_id);
   }
   return 0;
