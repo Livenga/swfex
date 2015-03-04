@@ -42,6 +42,41 @@ int swf_definebitsjpeg(int fd, const int tag_size) {
   return 0;
 }
 
+int swf_definebitsjpeg2(int fd, const int tag_size) {
+  int image_fd;
+  char imageID[4096];
+  size_t bytes  = 0;
+  unsigned int read_bytes = 0, image_size = 0;
+  unsigned char characterID[2], *image_field, void_area[4];
+
+  if((bytes = read(fd, characterID, 2)) != 2) {
+    return EOF;
+  }
+  read_bytes += bytes;
+
+  sprintf(imageID, "%d.jpg",
+      (characterID[1] << 8) + (characterID[0] << 0));
+
+  bytes = read(fd, void_area, 4);
+  read_bytes += bytes;
+  image_size = tag_size - read_bytes;
+
+  image_fd = open(imageID, O_WRONLY | O_CREAT, 0644);
+
+  image_field = (unsigned char *)calloc(image_size, sizeof(unsigned char));
+
+  if((bytes = read(fd, image_field, image_size)) != image_size) {
+    free(image_field); return EOF;
+  }
+
+  if(image_fd > 0) {
+    write(image_fd, image_field, bytes);
+    close(image_fd);
+  }
+  free(image_field);
+  return 0;
+}
+
 int swf_definebitsjpeg3(int fd, const int tag_size) {
   int image_fd, alpha_fd, image_id = 0;
   char imageID[4096], alphaID[4096];

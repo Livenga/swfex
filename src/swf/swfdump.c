@@ -10,7 +10,6 @@
 #include "../../include/swfex.h"
 #include "../../include/swfutil.h"
 
-
 int swf_get_header(int fd, swf_header *head) {
   unsigned char tsize[4];
   if(read(fd, head->f_head, 3) != 3) {
@@ -37,7 +36,8 @@ int swf_get_property(int fd, swf_property *property) {
     fprintf(stderr, "レクトサイズの取得に失敗.\n"); return EOF;
   }
   property->f_bit_length = rect >> 3;
-  skip_seek = (((property->f_bit_length * 4) - 3) / 8) + 1;
+  //skip_seek = (((property->f_bit_length * 4) - 3) / 8) + 1;
+  skip_seek = round_up((double)(property->f_bit_length * 4 - 3) / 8.0);
   lseek(fd, skip_seek, SEEK_CUR);
   read(fd, &downRate, 1); read(fd, &upRate, 1);
   sprintf(frame_rate, "%d.%d", upRate, downRate);
@@ -76,8 +76,11 @@ long int swf_get_tag(int fd) {
 
   switch(tag_number) {
     case DEFINEBITS:
-    case DEFINEBITSJPEG2:
       err = swf_definebitsjpeg(fd, tag_length);
+      tag_length = 0;
+      break;
+    case DEFINEBITSJPEG2:
+      err = swf_definebitsjpeg2(fd, tag_length);
       tag_length = 0;
       break;
     case DEFINEBITSJPEG3:
@@ -119,28 +122,35 @@ int swfdump(const char *path) {
     perror(path); return EOF;
   }
 
+  /* SWF ヘッダの取得 */
   if(swf_get_header(fd, &s_header) == EOF) {
     close(fd);
     return EOF;
   }
 
-  /* zlib 圧縮の非伸縮 */
   strcpy(output_path, path);
   p = strchr(output_path, '.');
   *p = '\0';
-
   mkdir(output_path, 0777);
   chdir(output_path);
 
-  sprintf(output_path, "%s.zlib", output_path);
-  inflate_zlib(fd, output_path);
-
-  close(fd);
-  if((fd = open(output_path, O_RDONLY)) == EOF) {
-    perror(output_path); return EOF;
+  switch(s_header.f_head[0]) {
+    case 'F': // 非圧縮
+      break;
+    case 'C': // Zlib 圧縮
+      sprintf(output_path, "%s.zlib", output_path);
+      inflate_zlib(fd, output_path);
+      close(fd);
+      if((fd = open(output_path, O_RDONLY)) == EOF) {
+        perror(output_path); return EOF;
+      }
+      break;
+    case 'Z': // 7z 圧縮
+      break;
   }
-  swf_size = lseek(fd, 0L, SEEK_END);
-  lseek(fd, 0L, SEEK_SET);
+
+  swf_size = s_header.f_size;
+  /* RECT, FrameRate, etc... 読み込み */
   swf_get_property(fd, &s_prop);
   swf_size -= lseek(fd, 0L, SEEK_CUR);
 
@@ -151,9 +161,17 @@ int swfdump(const char *path) {
   printf("[SWF] Frame Rate : %f\n", s_prop.f_frame_rate);
   printf("[SWF] Number Of Frame : %f\n", s_prop.f_number_frame);
 
+  /* SWF Chunk読み込み開始 */
   swf_load(fd, swf_size);
   close(fd);
-  remove_temporary(output_path);
+
+  switch(s_header.f_head[0]) {
+    case 'C':
+      remove_temporary(output_path); // 一時ファイルの削除
+      break;
+    case 'Z': break;
+  }
+
   chdir("..");
   return 1;
 }
