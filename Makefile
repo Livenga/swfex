@@ -3,7 +3,6 @@ FLAGS = -g -Wall -I include/ -lz -ljpeg -lpng
 SOURCE = main.c\
 				 swf/swfdump.c\
 				 swf/inflate.c\
-				 swf/loadjpeg.c\
 				 swf/swftag.c\
 				 graphics/swfjpg.c\
 				 graphics/convert_png.c\
@@ -11,7 +10,7 @@ SOURCE = main.c\
 				 sound/swfsound.c\
 				 util.c
 
-OBJC = main.o swfdump.o inflate.o loadjpeg.o util.o swftag.o swfjpg.o convert_png.o\
+OBJC = main.o swfdump.o inflate.o util.o swftag.o swfjpg.o convert_png.o\
 			 swfbitmap.o swfsound.o
 
 PRJC = swfex
