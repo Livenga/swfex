@@ -28,7 +28,7 @@ int inflate_zlib(int fd, const char *output_path) {
   }
 
   if((err = inflateInit(&stream)) != Z_OK) {
-    fprintf(stderr, "伸長の初期化に失敗.\n");
+    fprintf(stderr, "伸張の初期化に失敗.\n");
     return EOF;
   }
 
@@ -54,7 +54,7 @@ int inflate_zlib(int fd, const char *output_path) {
   }
 
   if((err = inflateEnd(&stream)) != Z_OK) {
-    fprintf(stderr, "伸長の終了に失敗.\n");
+    fprintf(stderr, "伸張の終了に失敗.\n");
     return EOF;
   }
 
