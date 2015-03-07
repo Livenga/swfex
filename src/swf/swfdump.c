@@ -10,6 +10,10 @@
 #include "../../include/swfex.h"
 #include "../../include/swfutil.h"
 
+extern int getLZMA_data(int fd, lzma_header *head, const char *lzma_path);
+extern int decompressLZMA(const char *lzma_path);
+extern int overrunning(const char *lzma_path, const lzma_header head);
+
 int swf_get_header(int fd, swf_header *head) {
   unsigned char tsize[4];
   if(read(fd, head->f_head, 3) != 3) {
@@ -113,10 +117,10 @@ int swf_load(int fd, const unsigned long int swf_size) {
 int swfdump(const char *path) {
   int fd;
   char *p, output_path[4096];
+  unsigned long int swf_size = 0;
   swf_header s_header;
   swf_property s_prop;
-  unsigned long int swf_size = 0;
-  memset(&s_header, '\0', sizeof(swf_header));
+  lzma_header l_header;
 
   if((fd = open(path, O_RDONLY)) == EOF) {
     perror(path); return EOF;
@@ -127,6 +131,10 @@ int swfdump(const char *path) {
     close(fd);
     return EOF;
   }
+
+  printf("[SWF] Header Type : %s\n", s_header.f_head);
+  printf("[SWF] Adobe Flash Version : %u\n", s_header.f_version);
+  printf("[SWF] Uncompless Size : %lu\n", s_header.f_size);
 
   strcpy(output_path, path);
   p = strchr(output_path, '.');
@@ -141,12 +149,26 @@ int swfdump(const char *path) {
       sprintf(output_path, "%s.zlib", output_path);
       inflate_zlib(fd, output_path);
       close(fd);
-      if((fd = open(output_path, O_RDONLY)) == EOF) {
+      break;
+    case 'Z': // LZMA 圧縮
+      sprintf(output_path, "%s.lzma", output_path);
+      l_header.l_uncompress_size = s_header.f_size - 8;
+      /* LZMA 圧縮データの取得 */
+      if(getLZMA_data(fd, &l_header, output_path) == EOF) {
+        close(fd); return EOF;
+      }
+      printf("[LZMA] Compress Length: %lu\n", l_header.l_compress_size);
+      printf("[LZMA] Uncompress Length: %lu\n", l_header.l_uncompress_size);
+      close(fd);
+      //decompressLZMA(output_path);
+      overrunning(output_path, l_header);
+      break;
+  }
+
+  if(s_header.f_head[0] == 'C' || s_header.f_head[0] == 'Z') {
+    if((fd = open("Core.temp", O_RDONLY)) == EOF) {
         perror(output_path); return EOF;
       }
-      break;
-    case 'Z': // 7z 圧縮
-      break;
   }
 
   swf_size = s_header.f_size;
@@ -154,20 +176,18 @@ int swfdump(const char *path) {
   swf_get_property(fd, &s_prop);
   swf_size -= lseek(fd, 0L, SEEK_CUR);
 
-  printf("[SWF] Header Type : %s\n", s_header.f_head);
-  printf("[SWF] Adobe Flash Version : %u\n", s_header.f_version);
-  printf("[SWF] Uncompless Size : %lu\n", s_header.f_size);
   printf("[SWF] Bit Length: %u\n", s_prop.f_bit_length);
   printf("[SWF] Frame Rate : %f\n", s_prop.f_frame_rate);
   printf("[SWF] Number Of Frame : %f\n", s_prop.f_number_frame);
 
   /* SWF Chunk読み込み開始 */
-  swf_load(fd, swf_size);
+  //if(s_header.f_head[0] != 'Z')
+    swf_load(fd, swf_size);
   close(fd);
 
   switch(s_header.f_head[0]) {
     case 'C':
-      remove_temporary(output_path); // 一時ファイルの削除
+      //remove_temporary(output_path); // 一時ファイルの削除
       break;
     case 'Z': break;
   }
