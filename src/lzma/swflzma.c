@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +12,7 @@
 #include "../../include/swfex.h"
 #include "../../include/swfutil.h"
 
-#define BUFFER_SIZE (65536)
+#define BUFFER_SIZE (4096)
 //#define BUFFER_SIZE (256)
 
 int getLZMA_data(int fd, lzma_header *head, const char *lzma_path) {
@@ -21,7 +22,7 @@ int getLZMA_data(int fd, lzma_header *head, const char *lzma_path) {
   size_t bytes = 0;
 
   if((lzma_fd = open(lzma_path, O_WRONLY | O_CREAT, 0644)) == EOF) {
-    fprintf(stderr, "LZMA fd の作製に失敗.\n"); return EOF;
+    fprintf(stderr, "LZMA file descripter のオープンに失敗.\n"); return EOF;
   }
 
   /* LZMA 情報 */
@@ -74,8 +75,7 @@ int getLZMA_data(int fd, lzma_header *head, const char *lzma_path) {
 
 int init_decoder(lzma_stream *strm) {
   const char *msg;
-  //lzma_ret ret = lzma_stream_decoder(strm, UINT64_MAX, LZMA_CONCATENATED);
-  lzma_ret ret = lzma_alone_decoder(strm, UINT64_MAX);
+  lzma_ret ret = lzma_alone_decoder(strm, (128 << 20));
 
   if(ret == LZMA_OK) return 0;
   switch(ret) {
@@ -92,12 +92,12 @@ int init_decoder(lzma_stream *strm) {
   return EOF;
 }
 
+#ifdef __SYSCALL__
 int decompressLZMA(const char *lzma_path) {
   int output_fd, input_fd;
   size_t write_size = 0;
   char path[4096], uncompress_path[4096], *p;
-  const char *msg;
-  unsigned char input_buffer[BUFFER_SIZE], output_buffer[BUFFER_SIZE];
+  uint8_t input_buffer[BUFFER_SIZE], output_buffer[BUFFER_SIZE];
   /* initialize lzma stream */
   lzma_stream strm = LZMA_STREAM_INIT;
   lzma_ret ret = LZMA_OK;
@@ -118,84 +118,45 @@ int decompressLZMA(const char *lzma_path) {
     return EOF;
   }
 
-  strm.next_in = NULL;
-  strm.avail_in = 0;
-  strm.next_out = output_buffer;
-  strm.avail_out = sizeof(output_buffer);
-
-  while(1) {
+  do {
     strm.next_in = input_buffer;
-    strm.avail_in = read(input_fd, input_buffer, BUFFER_SIZE);
-    if(strm.avail_in == 0) action = LZMA_FINISH;
+    strm.avail_in = read(input_fd, input_buffer, sizeof(uint8_t) * BUFFER_SIZE);
+    if(strm.avail_in == 0)
+      action = LZMA_FINISH;
 
-    while(1) {
+    do {
       strm.next_out = output_buffer;
       strm.avail_out = sizeof(output_buffer);
 
       ret = lzma_code(&strm, action);
-      if(strm.avail_out == 0 || ret == LZMA_STREAM_END) {
-        write_size = sizeof(output_buffer) - strm.avail_out;
-        if(write(output_fd, output_buffer, write_size) != write_size) {
-          lzma_end(&strm);
-          close(input_fd); close(output_fd); return EOF;
-        }
-      }
+      //assert((ret == LZMA_OK) || (ret == LZMA_STREAM_END) || (action == LZMA_FINISH));
 
-      if(ret != LZMA_OK) {
-        if(ret == LZMA_STREAM_END)
-          break;
-        switch(ret) {
-          case LZMA_MEM_ERROR:
-            msg = "Memory allocation failed";
-            break;
-          case LZMA_FORMAT_ERROR:
-            msg = "The input is not in the .xz format";
-            break;
-          case LZMA_OPTIONS_ERROR:
-            msg = "Unsupported compression options";
-            break;
-          case LZMA_DATA_ERROR:
-            msg = "Compressed file is corrupt";
-            break;
-          case LZMA_BUF_ERROR:
-            msg = "Compressed file is truncated or otherwise corrupt";
-            break;
-          default:
-            msg = "Unknown error, possibly a bug";
-            break;
-        }
-        fprintf(stderr, "Decoder Error: %s (error code: %u)\n", msg, ret);
-        fprintf(stderr, "FileDescriptor Seek %u\n", (unsigned)lseek(input_fd, 0L, SEEK_CUR));
-        close(input_fd); close(output_fd);
-        lzma_end(&strm);
-        return EOF;
-      }
-    }
-    if(action == LZMA_FINISH) break;
-  }
+      write_size = sizeof(output_buffer) - strm.avail_out;
+      write(output_fd, output_buffer, sizeof(uint8_t) * write_size);
+
+    } while(strm.avail_out == 0 && ret == LZMA_STREAM_END);
+  } while(action != LZMA_FINISH);
 
   /* file close */
   close(input_fd); close(output_fd);
   lzma_end(&strm);
   return 0;
 }
-
-int overrunning(const char *lzma_path, const lzma_header head) {
-  int output_fd, input_fd;
+#else
+int decompressLZMA(const char *lzma_path, const unsigned long int uncompress_length) {
+  FILE *output_fp, *input_fp;
   size_t write_size = 0;
+  uint8_t input_buffer[BUFFER_SIZE], output_buffer[BUFFER_SIZE];
   char path[4096], uncompress_path[4096], *p;
-  unsigned char *input_buffer, *output_buffer;
-  unsigned long int lzma_length = 0;
   /* initialize lzma stream */
   lzma_stream strm = LZMA_STREAM_INIT;
-  lzma_action action = LZMA_RUN;
   lzma_ret ret = LZMA_OK;
-  uint64_t decompress_memory_limit = 40 * (1 << 20);
-  uint64_t decompress_buffer_size;
-  size_t input_position = 0, output_position = 0;
+  lzma_action action = LZMA_RUN;
 
-  if(init_decoder(&strm) == EOF)
-    return EOF;
+  //if(init_decoder(&strm) == EOF)
+    //return EOF;
+  //ret = lzma_alone_decoder(&strm, (256 * 1024 * 1024));
+  ret = lzma_auto_decoder(&strm, (256 * 1024 * 1024), 0);
 
   strcpy(path, lzma_path);
   p = strchr(path, '.');
@@ -203,58 +164,55 @@ int overrunning(const char *lzma_path, const lzma_header head) {
   sprintf(uncompress_path, "%s.temp", path);
 
   /* file open */
-  if((input_fd = open(lzma_path, O_RDONLY)) == EOF) return EOF;
-  if((output_fd = open(uncompress_path, O_WRONLY | O_CREAT, 0644)) == EOF) {
-    close(input_fd);
+  if((input_fp = fopen(lzma_path, "rb")) == NULL) return EOF;
+  if((output_fp = fopen(uncompress_path, "wb")) == NULL) {
+    fclose(input_fp);
     return EOF;
   }
 
-  decompress_buffer_size = lseek(input_fd, 0L, SEEK_END);
-  lseek(input_fd, 0L, SEEK_SET);
+  unsigned char swf_head[4];
+  swf_head[0] = 'F'; swf_head[1] = 'W'; swf_head[2] = 'S';
+  swf_head[3] = 26;
+  fwrite(swf_head, sizeof(unsigned char), 4, output_fp);
+  swf_head[0] = uncompress_length & 0xFF;
+  swf_head[1] = (uncompress_length >> 8) & 0xFF;
+  swf_head[2] = (uncompress_length >> 16) & 0xFF;
+  swf_head[3] = (uncompress_length >> 24) & 0xFF;
+  fwrite(swf_head, sizeof(unsigned char), 4, output_fp);
 
-  input_buffer = (unsigned char *)calloc(decompress_buffer_size,
-      sizeof(unsigned char));
-  output_buffer = (unsigned char *)calloc(head.l_uncompress_size, sizeof(unsigned char));
+  do {
+    strm.next_in = input_buffer;
+    strm.avail_in = fread(input_buffer, sizeof(uint8_t), BUFFER_SIZE, input_fp);
+    if(strm.avail_in == 0)
+      action = LZMA_FINISH;
 
-  read(input_fd, input_buffer, decompress_buffer_size);
-  ret = lzma_stream_buffer_decode(
-      &decompress_memory_limit,
-      LZMA_TELL_NO_CHECK,
-      NULL,
-      input_buffer,
-      &input_position,
-      decompress_buffer_size,
-      output_buffer,
-      &output_position,
-      head.l_uncompress_size);
+    do {
+      strm.next_out = output_buffer;
+      strm.avail_out = sizeof(output_buffer);
 
-  const char *msg;
-  switch(ret) {
-    case LZMA_MEM_ERROR:
-      msg = "Memory allocation failed";
-      break;
-    case LZMA_FORMAT_ERROR:
-      msg = "The input is not in the .xz format";
-      break;
-    case LZMA_OPTIONS_ERROR:
-      msg = "Unsupported compression options";
-      break;
-    case LZMA_DATA_ERROR:
-      msg = "Compressed file is corrupt";
-      break;
-    case LZMA_BUF_ERROR:
-      msg = "Compressed file is truncated or otherwise corrupt";
-      break;
-    default:
-      msg = "Unknown error, possibly a bug";
-      break;
-  }
-  fprintf(stderr, "Decoder Error: %s (error code: %u)\n", msg, ret);
-  write(output_fd, output_buffer, write_size);
+      ret = lzma_code(&strm, action);
+      if(!(ret == LZMA_OK) || (ret == LZMA_STREAM_END)) {
+        switch(ret) {
+          case LZMA_NO_CHECK: printf("LZMA_NO_CHECK\n"); break;
+          case LZMA_UNSUPPORTED_CHECK: printf("LZMA_UNSUPPORTED_CHECK\n"); break;
+          case LZMA_MEM_ERROR: printf("LZMA_MEM_ERROR\n"); break;
+          case LZMA_MEMLIMIT_ERROR: printf("LZMA_MEMLIMIT_ERROR\n"); break;
+          case LZMA_FORMAT_ERROR: printf("LZMA_FORMAT_ERROR\n"); break;
+          case LZMA_OPTIONS_ERROR: printf("LZMA_OPTIONS_ERROR\n"); break;
+          case LZMA_DATA_ERROR: printf("LZMA_DATA_ERROR\n"); break;
+          case LZMA_BUF_ERROR: printf("LZMA_BUF_ERROR\n"); break;
+          case LZMA_PROG_ERROR: printf("LZMA_PROG_ERROR\n"); break;
+          default: printf("UNKNOWN ERROR\n"); break;
+        }
+      }
+      write_size = sizeof(output_buffer) - strm.avail_out;
+      fwrite(output_buffer, sizeof(uint8_t), write_size, output_fp);
+    } while(strm.avail_out == 0 && ret != LZMA_STREAM_END);
+  } while(action != LZMA_FINISH);
 
   /* file close */
-  free(input_buffer); free(output_buffer);
-  close(input_fd); close(output_fd);
+  fclose(input_fp); fclose(output_fp);
   lzma_end(&strm);
   return 0;
 }
+#endif

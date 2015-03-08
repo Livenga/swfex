@@ -39,7 +39,7 @@ int swf_definebitsjpeg(int fd, const int tag_size) {
     close(image_fd);
   }
   free(image_field);
-  return 0;
+  return (characterID[1] << 8) + (characterID[0]);
 }
 
 int swf_definebitsjpeg2(int fd, const int tag_size) {
@@ -57,9 +57,11 @@ int swf_definebitsjpeg2(int fd, const int tag_size) {
   sprintf(imageID, "%d.jpg",
       (characterID[1] << 8) + (characterID[0] << 0));
 
+  /*
   bytes = read(fd, void_area, 4);
   read_bytes += bytes;
   image_size = tag_size - read_bytes;
+  */
 
   image_fd = open(imageID, O_WRONLY | O_CREAT, 0644);
 
@@ -74,7 +76,8 @@ int swf_definebitsjpeg2(int fd, const int tag_size) {
     close(image_fd);
   }
   free(image_field);
-  return 0;
+  //return 0;
+  return (characterID[1] << 8) + (characterID[0]);
 }
 
 int swf_definebitsjpeg3(int fd, const int tag_size) {
@@ -121,5 +124,6 @@ int swf_definebitsjpeg3(int fd, const int tag_size) {
     /* 画像変換 */
     convert_png(image_id);
   }
-  return 0;
+  //return 0;
+  return (characterID[1] << 8) + (characterID[0]);
 }

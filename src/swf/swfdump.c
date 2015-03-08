@@ -11,8 +11,7 @@
 #include "../../include/swfutil.h"
 
 extern int getLZMA_data(int fd, lzma_header *head, const char *lzma_path);
-extern int decompressLZMA(const char *lzma_path);
-extern int overrunning(const char *lzma_path, const lzma_header head);
+extern int decompressLZMA(const char *lzma_path, const unsigned long int  uncompress_length);
 
 int swf_get_header(int fd, swf_header *head) {
   unsigned char tsize[4];
@@ -75,20 +74,23 @@ long int swf_get_tag(int fd) {
     tag_length = tag_extend;
   }
 
-  printf("[%04x] %-28s %u\n", tag_number, swf_tag_function(tag_number), tag_length);
+  printf("[%04x] %-28s %u ", tag_number, swf_tag_function(tag_number), tag_length);
   if(tag_number == END) return SWF_OK;
 
   switch(tag_number) {
     case DEFINEBITS:
       err = swf_definebitsjpeg(fd, tag_length);
+      printf("(%d)", err);
       tag_length = 0;
       break;
     case DEFINEBITSJPEG2:
       err = swf_definebitsjpeg2(fd, tag_length);
+      printf("(%d)", err);
       tag_length = 0;
       break;
     case DEFINEBITSJPEG3:
       err = swf_definebitsjpeg3(fd, tag_length);
+      printf("(%d)", err);
       tag_length = 0;
       break;
     case DEFINEBITSLOSSLESS2:
@@ -98,6 +100,7 @@ long int swf_get_tag(int fd) {
       tag_length = swf_definesound(fd, tag_number, tag_length);
       break;
   }
+  putchar('\n');
 
   return tag_length;
 }
@@ -149,6 +152,9 @@ int swfdump(const char *path) {
       sprintf(output_path, "%s.zlib", output_path);
       inflate_zlib(fd, output_path);
       close(fd);
+      if((fd = open(output_path, O_RDONLY)) == EOF) {
+        perror(output_path); return EOF;
+      }
       break;
     case 'Z': // LZMA 圧縮
       sprintf(output_path, "%s.lzma", output_path);
@@ -160,15 +166,14 @@ int swfdump(const char *path) {
       printf("[LZMA] Compress Length: %lu\n", l_header.l_compress_size);
       printf("[LZMA] Uncompress Length: %lu\n", l_header.l_uncompress_size);
       close(fd);
-      //decompressLZMA(output_path);
-      overrunning(output_path, l_header);
-      break;
-  }
-
-  if(s_header.f_head[0] == 'C' || s_header.f_head[0] == 'Z') {
-    if((fd = open("Core.temp", O_RDONLY)) == EOF) {
+      decompressLZMA(output_path, l_header.l_uncompress_size + 8);
+      p = strchr(output_path, '.'); *p = '\0';
+      sprintf(output_path, "%s.temp", output_path);
+      if((fd = open(output_path, O_RDONLY)) == EOF) {
         perror(output_path); return EOF;
       }
+
+      break;
   }
 
   swf_size = s_header.f_size;
@@ -181,7 +186,7 @@ int swfdump(const char *path) {
   printf("[SWF] Number Of Frame : %f\n", s_prop.f_number_frame);
 
   /* SWF Chunk読み込み開始 */
-  //if(s_header.f_head[0] != 'Z')
+  if(s_header.f_head[0] == 'C' || s_header.f_head[0] == 'F')
     swf_load(fd, swf_size);
   close(fd);
 
