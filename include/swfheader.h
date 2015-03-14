@@ -14,5 +14,12 @@ typedef struct swf_property {
   double f_number_frame;
 } swf_property;
 
+/* SWF LZMA Compress ヘッダ */
+typedef struct {
+  unsigned long int l_uncompress_size;
+  unsigned long int l_compress_size;
+  unsigned char l_prop[5];
+} lzma_header;
+
 /* src/util.c */
 extern int swf_get_header(int fd, swf_header *head);
